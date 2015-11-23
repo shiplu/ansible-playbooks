@@ -1,15 +1,43 @@
 - name: Install Squid proxy server
-  hosts: "{{ ip }}"
-  remote_user: "{{ user }}"
+  hosts: squidproxy
+  remote_user: root
+
+  vars:
+    apt_package: squid3 
+    http_port: 56789
+    hostname: imgsign
+    networks:
+      - { name: "home", src_ip: "IP address of home"}
+      - { name: "office", src_ip: "IP address of office"}
 
   tasks:
-    - name: Install squid sever
-      apt: name=squid
+    # - name: Install python-passlib
+    #   apt: name=python-passlib state=present
+    # - name: Create squid user
+    #   htpasswd:
+    #     path: /etc/squid/passwdfile
+    #     name: "{{ squid_user }}"
+    #     password: "{{ squid_pass }}"
+    #     mode: 0640
+    #     state: present
+    - name: Install squid server
+      apt: "name={{ apt_package }} state=present"
 
     - name: Configure squid
-      template: src="squid.conf.j2" dest=/etc/squid/squid.conf
+      template:
+        src: "{{ apt_package }}.conf.j2"
+        dest: "/etc/{{ apt_package }}/squid.conf"
+        mode: 0600
       register: squid_configuration
 
     - name: Restart squid
-      service: name=squid state=restarted
+      service:
+        name: "{{ apt_package }}"
+        state: restarted
       when: squid_configuration.changed
+
+    - name: Check squid
+      command: "{{ apt_package }} -k check"
+      register: check_result
+      changed_when: "check_result.rc != 0"
+
